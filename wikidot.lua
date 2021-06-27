@@ -124,25 +124,6 @@ read_file = function(file)
   end
 end
 
-is_on_targeted = function(url)
-  -- THumbnails
-  if string.match(url, "^https?://[^/]+%.wdfiles%.com/") then
-    return true
-  end
-
-  if current_item_type == "wiki" then
-    return string.match(url, targeted_regex_prefix .. "/") or string.match(url, targeted_regex_prefix .. "$")
-  elseif current_item_type == "user" then
-    return url == "http://www.wikidot.com/user:info/" .. current_item_value
-          or string.match(url, "^https?://[^/%.#]%.wikidot%.com/ajax%-module%-connector%.php$")
-          or string.match(url, "^https?://d2qhngyckgiutd%.cloudfront%.net/") -- Thumbnails
-          or string.match(url, "^http://[^/]+%.wikidot%.com/userkarma%.php")
-          or string.match(url, "^http://[^/]+%.wikidot%.com/avatar%.php")
-  else
-    error("You need to implement is_on_targeted for this item type")
-  end
-end
-
 allowed = function(url, parenturl)
   assert(parenturl ~= nil)
 
@@ -216,14 +197,28 @@ allowed = function(url, parenturl)
     return true
   end
   
-  if not is_on_targeted(url) then
-   to_queue_to_urls[url] = true
-    return false
+  -- THumbnails
+  if string.match(url, "^https?://[^/]+%.wdfiles%.com/") then
+    return true
   end
-  
 
-  --print_debug("Allowed true on " .. url)
-  return true
+  if current_item_type == "wiki" then
+    if string.match(url, targeted_regex_prefix .. "/") or string.match(url, targeted_regex_prefix .. "$") then
+      return true
+    end
+  elseif current_item_type == "user" then
+    if url == "http://www.wikidot.com/user:info/" .. current_item_value
+      or string.match(url, "^https?://[^/%.#]%.wikidot%.com/ajax%-module%-connector%.php$")
+      or string.match(url, "^https?://d2qhngyckgiutd%.cloudfront%.net/") -- Thumbnails
+      or string.match(url, "^http://[^/]+%.wikidot%.com/userkarma%.php")
+      or string.match(url, "^http://[^/]+%.wikidot%.com/avatar%.php") then
+      return true
+    end
+  end
+
+  to_queue_to_urls[url] = true
+  return false
+
 
   --assert(false, "This segment should not be reachable")
 end
@@ -602,16 +597,11 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   -- Whitelist instead of blacklist status codes
   local is_valid_403 = current_item_type == "wiki" and string.match(url["url"], targeted_regex_prefix .. "/common%-%-")
   if status_code ~= 200
-    and is_on_targeted(url["url"])
     and not (status_code == 404) -- Because this site is editable, there are loads of weird 404s
     and not (status_code == 403 and is_valid_403)
     and not (status_code >= 300 and status_code <= 399) then
     print("Server returned " .. http_stat.statcode .. " (" .. err .. "). Sleeping.\n")
     do_retry = true
-  end
-
-  if not is_on_targeted(url["url"]) then
-    maxtries = 2
   end
   
   -- revision_id=26219190&moduleName=history%2fPageVersionModule&callbackIndex=374&wikidot_token7=[token] 500s (checked 1 day delay) on wiki:cpp-wiki.wikidot.com if you make it get all versions
