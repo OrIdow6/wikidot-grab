@@ -17,6 +17,7 @@ import sys
 import time
 import string
 import json
+import requests
 
 import seesaw
 from seesaw.externalprocess import WgetDownload
@@ -94,6 +95,24 @@ class CheckIP(SimpleTask):
                     'Are you behind a firewall/proxy? That is a big no-no!')
                 raise Exception(
                     'Are you behind a firewall/proxy? That is a big no-no!')
+
+
+            # NEW for 2021! More network checks
+            # 1 - TOR
+            if "Congratulations" in requests.get("https://check.torproject.org/").text:
+              msg = "You seem to be using TOR."
+              item.log_output(msg)
+              raise Exception(msg)
+
+
+            # 2 - NXDOMAIN hijacking (could be eliminated for some projects)
+            try:
+              socket.gethostbyname(hashlib.sha1(TRACKER_ID.encode('utf8')).hexdigest()[:6] + ".nonexistent-subdomain.archiveteam.org")
+              msg = "You seem to be experiencing NXDOMAIN hijacking."
+              item.log_output(msg)
+              raise Exception(msg)
+            except socket.gaierror:
+              pass
 
         # Check only occasionally
         if self._counter <= 0:
