@@ -638,7 +638,7 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
 end
 
 
-queue_list_to = function(list, endpoint)
+queue_list_to = function(list, key)
   if do_debug then
     for item, _ in pairs(list) do
       print("Would have sent discovered item " .. item)
@@ -659,14 +659,13 @@ queue_list_to = function(list, endpoint)
       local tries = 0
       while tries < 10 do
         local body, code, headers, status = http.request(
-          endpoint,
+          "http://blackbird-amqp.meo.ws:23038/" .. key .. "/",
           to_send
         )
         if code == 200 or code == 409 then
           break
         end
         os.execute("sleep " .. math.floor(math.pow(2, tries)))
-        print("Sleeping on queue to " .. endpoint)
         tries = tries + 1
       end
       if tries == 10 then
@@ -678,8 +677,8 @@ end
 
 
 wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total_downloaded_bytes, total_download_time)
-  queue_list_to(discovered_items, "http://example.com")
-  queue_list_to(to_queue_to_urls, "http://example.com")
+  queue_list_to(discovered_items, "fill_me_in")
+  queue_list_to(to_queue_to_urls, "fill_me_in")
 end
 
 wget.callbacks.write_to_warc = function(url, http_stat)
